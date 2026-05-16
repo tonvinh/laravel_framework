@@ -22,6 +22,8 @@ abstract class BaseApiController extends Controller
 
     public function index(): JsonResponse
     {
+        $this->authorize('viewAny', $this->repo->model);
+
         return $this->success(
             $this->resource::collection($this->repo->paginate())
         );

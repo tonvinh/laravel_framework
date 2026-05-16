@@ -9,13 +9,13 @@ use function Pest\Laravel\postJson;
 use function Pest\Laravel\putJson;
 
 beforeEach(function (): void {
-    loginAs();
+    $this->user = loginAs();
 });
 
 // ── index ──────────────────────────────────────────────────────────────────
 
 it('returns paginated demos', function (): void {
-    Demo::factory(5)->create();
+    Demo::factory(5)->create(['user_id' => $this->user->id]);
 
     getJson('/api/v1/demos')
         ->assertOk()
@@ -24,8 +24,8 @@ it('returns paginated demos', function (): void {
 });
 
 it('filters demos by status', function (): void {
-    Demo::factory(3)->create(['status' => 'published']);
-    Demo::factory(2)->create(['status' => 'draft']);
+    Demo::factory(3)->create(['status' => 'published', 'user_id' => $this->user->id]);
+    Demo::factory(2)->create(['status' => 'draft', 'user_id' => $this->user->id]);
 
     getJson('/api/v1/demos?filter[status]=published')
         ->assertOk()
@@ -33,8 +33,8 @@ it('filters demos by status', function (): void {
 });
 
 it('sorts demos by title', function (): void {
-    Demo::factory()->create(['title' => 'Zebra']);
-    Demo::factory()->create(['title' => 'Alpha']);
+    Demo::factory()->create(['title' => 'Zebra', 'user_id' => $this->user->id]);
+    Demo::factory()->create(['title' => 'Alpha', 'user_id' => $this->user->id]);
 
     $response = getJson('/api/v1/demos?sort=title')->assertOk();
 
@@ -44,7 +44,7 @@ it('sorts demos by title', function (): void {
 // ── show ───────────────────────────────────────────────────────────────────
 
 it('shows a single demo', function (): void {
-    $demo = Demo::factory()->create();
+    $demo = Demo::factory()->create(['user_id' => $this->user->id]);
 
     getJson("/api/v1/demos/{$demo->uuid}")
         ->assertOk()
@@ -59,39 +59,43 @@ it('returns 404 for unknown uuid', function (): void {
 
 // ── store ──────────────────────────────────────────────────────────────────
 
-it('creates a demo', function (): void {
-    $user = User::factory()->create();
-
+it('creates a demo and assigns it to the authenticated user', function (): void {
     postJson('/api/v1/demos', [
         'title'   => 'My Demo',
         'content' => 'Some content here.',
         'status'  => 'published',
-        'user_id' => $user->id,
     ])->assertCreated()
       ->assertJsonPath('data.title', 'My Demo')
       ->assertJsonPath('data.status', 'published');
 
-    expect(Demo::where('title', 'My Demo')->exists())->toBeTrue();
+    expect(Demo::where('title', 'My Demo')->where('user_id', $this->user->id)->exists())->toBeTrue();
 });
 
 // ── update ─────────────────────────────────────────────────────────────────
 
-it('updates a demo', function (): void {
-    $demo = Demo::factory()->create(['status' => 'draft']);
+it('updates a demo owned by the authenticated user', function (): void {
+    $demo = Demo::factory()->create(['user_id' => $this->user->id, 'status' => 'draft']);
 
     putJson("/api/v1/demos/{$demo->uuid}", [
-        'title'   => 'Updated Title',
-        'status'  => 'published',
-        'user_id' => $demo->user_id,
+        'title'  => 'Updated Title',
+        'status' => 'published',
     ])->assertOk()
       ->assertJsonPath('data.title', 'Updated Title')
       ->assertJsonPath('data.status', 'published');
 });
 
+it('forbids updating a demo owned by another user', function (): void {
+    $other = User::factory()->create();
+    $demo  = Demo::factory()->create(['user_id' => $other->id]);
+
+    putJson("/api/v1/demos/{$demo->uuid}", ['title' => 'Hacked'])
+        ->assertForbidden();
+});
+
 // ── destroy ────────────────────────────────────────────────────────────────
 
-it('deletes a demo', function (): void {
-    $demo = Demo::factory()->create();
+it('deletes a demo owned by the authenticated user', function (): void {
+    $demo = Demo::factory()->create(['user_id' => $this->user->id]);
 
     deleteJson("/api/v1/demos/{$demo->uuid}")
         ->assertNoContent();
@@ -100,13 +104,20 @@ it('deletes a demo', function (): void {
     expect(Demo::withTrashed()->find($demo->id))->not->toBeNull();
 });
 
+it('forbids deleting a demo owned by another user', function (): void {
+    $other = User::factory()->create();
+    $demo  = Demo::factory()->create(['user_id' => $other->id]);
+
+    deleteJson("/api/v1/demos/{$demo->uuid}")
+        ->assertForbidden();
+});
+
 // ── validation ─────────────────────────────────────────────────────────────
 
 it('validates required fields on create', function (string $field): void {
     $data = [
-        'title'   => 'Demo Title',
-        'status'  => 'draft',
-        'user_id' => User::factory()->create()->id,
+        'title'  => 'Demo Title',
+        'status' => 'draft',
     ];
 
     unset($data[$field]);
@@ -115,13 +126,12 @@ it('validates required fields on create', function (string $field): void {
         ->assertUnprocessable()
         ->assertJsonValidationErrors([$field]);
 
-})->with(['title', 'user_id']);
+})->with(['title']);
 
 it('rejects invalid status', function (): void {
     postJson('/api/v1/demos', [
-        'title'   => 'Demo Title',
-        'status'  => 'invalid-status',
-        'user_id' => User::factory()->create()->id,
+        'title'  => 'Demo Title',
+        'status' => 'invalid-status',
     ])->assertUnprocessable()
       ->assertJsonValidationErrors(['status']);
 });

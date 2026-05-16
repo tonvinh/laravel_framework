@@ -9,8 +9,8 @@ use App\Http\Controllers\Api\V1;
 |--------------------------------------------------------------------------
 */
 Route::prefix('v1/auth')->group(function (): void {
-    Route::post('login',    [V1\AuthController::class, 'login']);
-    Route::post('register', [V1\AuthController::class, 'register']);
+    Route::post('login',    [V1\AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('register', [V1\AuthController::class, 'register'])->middleware('throttle:register');
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('logout', [V1\AuthController::class, 'logout']);
