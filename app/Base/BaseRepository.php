@@ -9,7 +9,7 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 abstract class BaseRepository
 {
-    protected string $model;
+    public string $model;
     protected array  $allowedFilters  = [];
     protected array  $allowedSorts    = ['-created_at', 'created_at'];
     protected array  $allowedIncludes = [];
@@ -17,9 +17,9 @@ abstract class BaseRepository
     protected function query(): QueryBuilder
     {
         return QueryBuilder::for($this->model)
-            ->allowedFilters($this->allowedFilters)
-            ->allowedSorts($this->allowedSorts)
-            ->allowedIncludes($this->allowedIncludes);
+            ->allowedFilters(...$this->allowedFilters)
+            ->allowedSorts(...$this->allowedSorts)
+            ->allowedIncludes(...$this->allowedIncludes);
     }
 
     public function paginate(int $perPage = 15): LengthAwarePaginator

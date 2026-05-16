@@ -28,6 +28,13 @@ php artisan migrate
 ./vendor/bin/pint --test                 # Check style without fixing
 ```
 
+## Laravel 13 Gotchas
+
+- `App\Http\Controllers\Controller` is **empty** in Laravel 13 — `authorize()` is NOT included by default. `BaseApiController` adds `AuthorizesRequests` via `Controller.php` using `use \Illuminate\Foundation\Auth\Access\AuthorizesRequests`.
+- `spatie/laravel-query-builder` v7 uses **variadic args**: `allowedFilters(string ...$f)` — NOT array. `BaseRepository::query()` uses spread operator `...$this->allowedFilters`.
+- Child repositories must declare `public string $model` (not `protected`) because `BaseRepository::$model` is `public` and PHP forbids decreasing visibility in subclasses.
+- Test helpers (`getJson`, `postJson`, etc.) are in `Pest\Laravel` namespace — import with `use function Pest\Laravel\getJson;` in each test file (already imported in `tests/Pest.php` for convenience but each file still needs its own imports).
+
 ## Architecture: Base Class Inheritance
 
 **Core principle**: write base classes once, child classes declare only what's specific.

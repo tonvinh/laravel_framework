@@ -24,6 +24,5 @@ Route::prefix('v1/auth')->group(function (): void {
 |--------------------------------------------------------------------------
 */
 Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
-    // Thêm apiResource routes tại đây khi tạo resource mới
-    // Route::apiResource('products', V1\ProductController::class);
+    Route::apiResource('demos', V1\DemoController::class);
 });
