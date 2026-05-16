@@ -16,9 +16,17 @@ class DemoRepository extends BaseRepository
 
     public function rules(string $action, ?Model $model = null): array
     {
+        if ($action === 'update') {
+            return [
+                'title'   => ['sometimes', 'string', 'max:255'],
+                'content' => ['nullable', 'string', 'max:65535'],
+                'status'  => ['sometimes', 'in:draft,published,archived'],
+            ];
+        }
+
         return [
             'title'   => ['required', 'string', 'max:255'],
-            'content' => ['nullable', 'string'],
+            'content' => ['nullable', 'string', 'max:65535'],
             'status'  => ['sometimes', 'in:draft,published,archived'],
             'user_id' => ['required', 'exists:users,id'],
         ];

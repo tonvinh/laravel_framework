@@ -24,11 +24,11 @@ class DemoPolicy
 
     public function update(User $user, Demo $demo): bool
     {
-        return true;
+        return $user->id === $demo->user_id || $user->hasRole('admin');
     }
 
     public function delete(User $user, Demo $demo): bool
     {
-        return true;
+        return $user->id === $demo->user_id || $user->hasRole('admin');
     }
 }
